@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SantaLucia Scraper</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h1 span.badge {
+      font-size: 0.65rem;
+      background: #007acc;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      letter-spacing: .5px;
+    }
+
+    .card {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #858585;
+      margin-bottom: 10px;
+    }
+
+    /* --- Credentials row --- */
+    .creds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field label {
+      font-size: 0.72rem;
+      color: #9d9d9d;
+    }
+    .field input {
+      background: #3c3c3c;
+      border: 1px solid #555;
+      border-radius: 4px;
+      color: #d4d4d4;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      width: 200px;
+      outline: none;
+    }
+    .field input:focus { border-color: #007acc; }
+
+    .filter-info {
+      font-size: 0.78rem;
+      color: #9d9d9d;
+      margin-top: 10px;
+    }
+    .filter-info code {
+      background: #3c3c3c;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #4ec9b0;
+    }
+
+    /* --- Buttons --- */
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    button {
+      padding: 7px 16px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    button:disabled { opacity: .4; cursor: default; }
+
+    #btn-start  { background: #007acc; color: #fff; }
+    #btn-stop   { background: #c53030; color: #fff; }
+    #btn-export { background: #2d7d46; color: #fff; }
+
+    .row-count {
+      margin-left: auto;
+      font-size: 0.78rem;
+      color: #9d9d9d;
+    }
+    .row-count strong { color: #4ec9b0; font-size: 1rem; }
+
+    /* --- Progress bar --- */
+    .progress-wrap {
+      height: 3px;
+      background: #3c3c3c;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #007acc;
+      transition: width .3s;
+    }
+    .progress-bar.indeterminate {
+      width: 30%;
+      animation: slide 1.4s ease-in-out infinite;
+    }
+    @keyframes slide {
+      0%   { margin-left: -30%; }
+      100% { margin-left: 130%; }
+    }
+
+    /* --- Log --- */
+    #log {
+      background: #0c0c0c;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.78rem;
+      color: #4ec9b0;
+      padding: 10px 12px;
+      height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #log .err { color: #f48771; }
+
+    /* --- Table --- */
+    .table-wrap {
+      overflow: auto;
+      max-height: 380px;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    thead th {
+      background: #2d2d2d;
+      color: #9d9d9d;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+      letter-spacing: .5px;
+      padding: 8px 12px;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid #3c3c3c;
+    }
+    tbody tr { border-bottom: 1px solid #2d2d2d; }
+    tbody tr:hover { background: #2a2d2e; }
+    tbody td { padding: 6px 12px; color: #d4d4d4; }
+    tbody td:empty::after { content: '\2014'; color: #555; }
+
+    .empty-state {
+      text-align: center;
+      color: #555;
+      font-size: 0.82rem;
+      padding: 32px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>
+  SantaLucia Scraper
+  <span class="badge">WEB</span>
+</h1>
+
+<!-- Credentials & controls -->
+<div class="card">
+  <div class="card-title">Credenciales</div>
+  <div class="creds">
+    <div class="field">
+      <label for="inp-user">Usuario</label>
+      <input id="inp-user" type="text" value="B82215179" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="inp-pass">Contrasena</label>
+      <input id="inp-pass" type="password" value="DmP2*UmMzp" autocomplete="current-password">
+    </div>
+  </div>
+  <div class="filter-info">
+    Filtro activo: <code>T. Trabajo = "Encargo"</code> Y <code>Fecha visita</code> vacia
+  </div>
+  <div class="controls">
+    <button id="btn-start">Iniciar extraccion</button>
+    <button id="btn-stop" disabled>Detener</button>
+    <button id="btn-export" disabled>Exportar CSV</button>
+    <span class="row-count">Filas encontradas: <strong id="count">0</strong></span>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress"></div>
+  </div>
+</div>
+
+<!-- Log -->
+<div class="card">
+  <div class="card-title">Progreso</div>
+  <div id="log"></div>
+</div>
+
+<!-- Results -->
+<div class="card">
+  <div class="card-title">Resultados</div>
+  <div class="table-wrap">
+    <table id="results-table">
+      <thead id="thead"><tr><th colspan="99"><div class="empty-state">Inicia la extraccion para ver resultados</div></th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const btnStart  = document.getElementById('btn-start');
+  const btnStop   = document.getElementById('btn-stop');
+  const btnExport = document.getElementById('btn-export');
+  const countEl   = document.getElementById('count');
+  const logEl     = document.getElementById('log');
+  const thead     = document.getElementById('thead');
+  const tbody     = document.getElementById('tbody');
+  const progress  = document.getElementById('progress');
+
+  let currentJobId = null;
+  let eventSource  = null;
+  let headers      = [];
+  let allRows      = [];
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  function log(msg, isErr = false) {
+    const line = document.createElement('div');
+    if (isErr) line.className = 'err';
+    line.textContent = '> ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setRunning(running) {
+    btnStart.disabled  = running;
+    btnStop.disabled   = !running;
+    btnExport.disabled = allRows.length === 0;
+    if (running) {
+      progress.classList.add('indeterminate');
+    } else {
+      progress.classList.remove('indeterminate');
+      progress.style.width = allRows.length ? '100%' : '0%';
+    }
+  }
+
+  function buildHeaders(cols) {
+    headers = cols;
+    thead.innerHTML = '<tr>' + cols.map(c =>
+      `<th>${escHtml(c)}</th>`
+    ).join('') + '</tr>';
+  }
+
+  function addRow(rowData) {
+    allRows.push(rowData);
+    if (headers.length === 0) buildHeaders(Object.keys(rowData));
+    const tr = document.createElement('tr');
+    tr.innerHTML = headers.map(h =>
+      `<td>${escHtml(rowData[h] ?? '')}</td>`
+    ).join('');
+    tbody.appendChild(tr);
+    countEl.textContent = allRows.length;
+    btnExport.disabled = false;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // ── start ─────────────────────────────────────────────────────────────────
+
+  btnStart.addEventListener('click', async () => {
+    const username = document.getElementById('inp-user').value.trim();
+    const password = document.getElementById('inp-pass').value;
+    if (!username || !password) { alert('Introduce usuario y contrasena'); return; }
+
+    // Reset UI
+    logEl.innerHTML = '';
+    tbody.innerHTML = '';
+    thead.innerHTML = '<tr><th colspan="99"><div class="empty-state">Cargando...</div></th></tr>';
+    headers = [];
+    allRows = [];
+    countEl.textContent = '0';
+    setRunning(true);
+
+    // Start job
+    let res;
+    try {
+      res = await fetch('/api/scrape/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch (e) {
+      log('Error de conexion: ' + e.message, true);
+      setRunning(false);
+      return;
+    }
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      log('Error: ' + (json.error || res.statusText), true);
+      setRunning(false);
+      return;
+    }
+
+    currentJobId = json.job_id;
+
+    // Open SSE stream
+    eventSource = new EventSource('/api/scrape/stream/' + currentJobId);
+
+    eventSource.onmessage = (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.type === 'heartbeat') return;
+
+      if (ev.type === 'log') {
+        log(ev.msg);
+      } else if (ev.type === 'row') {
+        if (allRows.length === 0) {
+          // First row — set up columns
+          thead.innerHTML = '';
+          buildHeaders(Object.keys(ev.data));
+        }
+        addRow(ev.data);
+      } else if (ev.type === 'error') {
+        log(ev.msg, true);
+      } else if (ev.type === 'done') {
+        log('--- Proceso completado. ' + allRows.length + ' filas encontradas. ---');
+        eventSource.close();
+        currentJobId = null;
+        setRunning(false);
+        if (allRows.length === 0) {
+          thead.innerHTML = '<tr><th colspan="99"><div class="empty-state">No se encontraron filas con los filtros activos</div></th></tr>';
+        }
+      }
+    };
+
+    eventSource.onerror = () => {
+      if (eventSource.readyState === EventSource.CLOSED) {
+        log('Conexion cerrada.', true);
+        setRunning(false);
+      }
+    };
+  });
+
+  // ── stop ──────────────────────────────────────────────────────────────────
+
+  btnStop.addEventListener('click', async () => {
+    if (!currentJobId) return;
+    await fetch('/api/scrape/stop/' + currentJobId, { method: 'POST' });
+    log('Cancelando...');
+  });
+
+  // ── export CSV ────────────────────────────────────────────────────────────
+
+  btnExport.addEventListener('click', () => {
+    if (allRows.length === 0) return;
+
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [
+      headers.map(esc).join(','),
+      ...allRows.map(r => headers.map(h => esc(r[h] ?? '')).join(','))
+    ];
+    const bom = '\uFEFF';  // UTF-8 BOM for Excel
+    const blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const ts   = new Date().toISOString().slice(0,19).replace(/[T:]/g, '-').replace(/-/g, (m,i) => i < 10 ? m : '');
+    a.href     = url;
+    a.download = 'encargos_' + ts.replace(/[^0-9]/g, '') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
