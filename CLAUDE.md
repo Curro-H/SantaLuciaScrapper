@@ -4,7 +4,7 @@
 
 A Flask web app that logs into the SantaLucia insurance portal, scrapes a paginated table of claims, and filters rows where **T. Trabajo = "Encargo"** AND **Fecha visita is empty**. Built as a web app (replacing a Windows .exe) so it can be used from a browser on admin-restricted machines.
 
-**Live deployment:** Back4App Containers, auto-deployed from this GitHub repo (`main` branch).
+**Live deployment:** Render (free tier), auto-deployed from this GitHub repo (`main` branch).
 **GitHub:** https://github.com/Curro-H/SantaLuciaScrapper
 
 ---
@@ -15,7 +15,8 @@ A Flask web app that logs into the SantaLucia insurance portal, scrapes a pagina
 scraper.py            Pure Python stdlib scraper — no external dependencies
 web_app.py            Flask backend with SSE streaming
 templates/index.html  Single-page web UI (vanilla JS, dark theme)
-Dockerfile            Back4App Containers config (port 8080, gunicorn gthread)
+Dockerfile            Render config (port from $PORT env var, gunicorn gthread)
+render.yaml           Render service definition (free tier, Docker)
 requirements.txt      flask + gunicorn only
 ```
 
@@ -80,10 +81,17 @@ No other dependencies. `scraper.py` uses only Python stdlib.
 
 ---
 
-## Deployment (Back4App Containers)
+## Deployment (Render)
 
-1. Push to `main` → Back4App auto-rebuilds from `Dockerfile`
-2. Container listens on port 8080 (hardcoded in `Dockerfile` CMD)
-3. `PORT` env var supported in `web_app.py` for local override
+**First-time setup (once):**
+1. Go to https://render.com → sign up / log in
+2. **New → Web Service** → connect GitHub repo `Curro-H/SantaLuciaScrapper`
+3. Select environment: **Docker**, Plan: **Free**
+4. Click **Deploy** — Render builds and assigns a permanent URL (e.g. `https://santalucia-scraper.onrender.com`)
 
-To deploy a change: commit + push to `main`. That's it.
+**Ongoing deploys:**
+Push to `main` → Render auto-rebuilds from `Dockerfile`. That's it.
+
+**Notes:**
+- Container port is set via `PORT` env var (Render default: `10000`)
+- Free tier spins down after 15 min of inactivity; ~30s cold start on first visit
